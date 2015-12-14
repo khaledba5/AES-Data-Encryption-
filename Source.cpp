@@ -26,13 +26,37 @@ void substituteBytes()
 	}
 }
 
+void shiftRows()
+{
+	short temp1, temp2, temp3, temp4;
+	temp1 = plainText[4];
+	temp2 = plainText[8];
+	temp3 = plainText[9];
+	temp4 = plainText[15];
+
+	plainText[4] = plainText[5];
+	plainText[5] = plainText[6];
+	plainText[6] = plainText[7];
+	plainText[7] = temp1;
+	
+	plainText[8] = plainText[10];
+	plainText[9] = plainText[11];
+	plainText[10] = temp2;
+	plainText[11] = temp3;
+
+	plainText[15] = plainText[14];
+	plainText[14] = plainText[13];
+	plainText[13] = plainText[12];
+	plainText[12] = temp4;
+}
+
 
 int main()
 {
 	//readPlainText();
 	substituteBytes();
-	/*shiftRows();
-	mixColumns();
+	shiftRows();
+	/*mixColumns();
 	addRoundKey();
 	printOutput();*/
 	std::cin.get();
