@@ -1,2 +1,6 @@
 ﻿  Source.cpp
-  AES.vcxproj -> c:\Users\world\documents\visual studio 2013\Projects\AES\Debug\AES.exe
+c:\users\world\documents\visual studio 2013\projects\aes\aes\source.cpp(63): warning C4244: '=' : conversion from 'short' to 'unsigned char', possible loss of data
+c:\users\world\documents\visual studio 2013\projects\aes\aes\source.cpp(67): warning C4244: '=' : conversion from 'short' to 'unsigned char', possible loss of data
+c:\users\world\documents\visual studio 2013\projects\aes\aes\source.cpp(68): warning C4244: '=' : conversion from 'short' to 'unsigned char', possible loss of data
+c:\users\world\documents\visual studio 2013\projects\aes\aes\source.cpp(73): warning C4244: '=' : conversion from 'short' to 'unsigned char', possible loss of data
+  AES.vcxproj -> C:\Users\world\documents\visual studio 2013\Projects\AES\Debug\AES.exe
