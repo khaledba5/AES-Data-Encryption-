@@ -1,6 +1,10 @@
 #include <iostream>
-unsigned char plainText[16] = { 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
-unsigned char key[16] = { 0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
+#include <sstream>
+#include <iomanip>
+#include <cstdio>
+unsigned char states[16];
+unsigned char key[16];
+short roundd = 0;
 unsigned int words[44];
 unsigned char sbox[256] = {
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -45,79 +49,176 @@ void substituteBytes()
 {
 	for (int i = 0; i < 16; i++)
 	{
-		plainText[i] = sbox[plainText[i]];
+		states[i] = sbox[states[i]];
 	}
 }
 
 void shiftRows()
 {
-	short temp1, temp2, temp3, temp4;
-	temp1 = plainText[4];
-	temp2 = plainText[8];
-	temp3 = plainText[9];
-	temp4 = plainText[15];
+	unsigned char temp1, temp2, temp3, temp4;
+	temp1 = states[4];
+	temp2 = states[8];
+	temp3 = states[9];
+	temp4 = states[15];
 
-	plainText[4] = plainText[5];
-	plainText[5] = plainText[6];
-	plainText[6] = plainText[7];
-	plainText[7] = temp1;
+	states[4] = states[5];
+	states[5] = states[6];
+	states[6] = states[7];
+	states[7] = temp1;
 
-	plainText[8] = plainText[10];
-	plainText[9] = plainText[11];
-	plainText[10] = temp2;
-	plainText[11] = temp3;
+	states[8] = states[10];
+	states[9] = states[11];
+	states[10] = temp2;
+	states[11] = temp3;
 
-	plainText[15] = plainText[14];
-	plainText[14] = plainText[13];
-	plainText[13] = plainText[12];
-	plainText[12] = temp4;
+	states[15] = states[14];
+	states[14] = states[13];
+	states[13] = states[12];
+	states[12] = temp4;
 }
 
 void mixColumns()
 {
 	for (int i = 0; i < 4; i++)
 	{
-		char temp = plainText[i] ^ plainText[4 + i] ^ plainText[8 + i] ^ plainText[12 + i];
-		char S = plainText[i];
-		plainText[i] ^= temp ^ X2[plainText[i] ^ plainText[4 + i]];
-		plainText[4 + i] ^= temp ^ X2[plainText[4 + i] ^ plainText[8 + i]];
-		plainText[8 + i] ^= temp^X2[plainText[8 + i] ^ plainText[12 + i]];
-		plainText[12 + i] ^= temp^X2[plainText[12 + i] ^ S];
+		unsigned char temp = states[i] ^ states[4 + i] ^ states[8 + i] ^ states[12 + i];
+		unsigned char S = states[i];
+		states[i] ^= temp ^ X2[states[i] ^ states[4 + i]];
+		states[4 + i] ^= temp ^ X2[states[4 + i] ^ states[8 + i]];
+		states[8 + i] ^= temp ^ X2[states[8 + i] ^ states[12 + i]];
+		states[12 + i] ^= temp ^ X2[states[12 + i] ^ S];
 	}
 }
 
-unsigned int RotWord(unsigned int &temp)
+unsigned int RotWord(unsigned int temp)
 {
-	temp = (temp << 8)|(temp>>24);
+	temp = (temp << 8) | (temp >> 24);
+	return temp;
+}
+
+unsigned int subWord(unsigned int &temp)
+{
+	unsigned char x[4];
+	x[0] = temp >> 24;
+	x[1] = temp >> 16;
+	x[2] = temp >> 8;
+	x[3] = temp;
+
+	x[0] = sbox[x[0]];
+	x[1] = sbox[x[1]];
+	x[2] = sbox[x[2]];
+	x[3] = sbox[x[3]];
+
+	temp = (x[0] << 24) | (x[1] << 16) | (x[2] << 8) | (x[3]);
 	return temp;
 }
 
 void keyExpansion()
 {
-	unsigned int temp;
 	for (int i = 0; i < 4; i++)
 	{
-		words[i] = (key[4 * i] << 24) | (key[4 * i + 1] << 16) | (key[4 * i + 2] << 8) | (key[4 * i + 3]);
+		words[i] = (key[i] << 24) | (key[i + 4] << 16) | (key[i + 8] << 8) | (key[i + 12]);
 	}
 	for (int i = 4; i < 44; i++)
 	{
-		temp = words[i - 1];
+		unsigned int temp = words[i - 1];
 		if (i % 4 == 0)
-			temp = sbox[RotWord(temp)] ^ Rcon[i / 4];
-			words[i] = words[i - 4] ^ temp;
+		{
+			unsigned int o = RotWord(temp);
+			temp = subWord(o) ^ ((Rcon[(i / 4)-1]<<24)|0);
+		}
+		words[i] = words[i - 4] ^ temp;
+	}
+}
+
+void addRoundKey()
+{
+	unsigned char temp[16];
+	for (int i = 0; i < 4; i++)
+	{
+		temp[i] = words[roundd] >> 24;
+		temp[i + 4] = words[roundd] >> 16;
+		temp[i + 8] = words[roundd] >> 8;
+		temp[i + 12] = words[roundd];
+		roundd++;
+
+	}
+
+	for (int i = 0; i < 16; i += 4)
+	{
+		states[i] ^= temp[i];
+		states[i + 1] ^= temp[i + 1];
+		states[i + 2] ^= temp[i + 2];
+		states[i + 3] ^= temp[i + 3];
 	}
 }
 
 
 int main()
 {
-	//keyExpansion();
-	//readPlainText();
-	//substituteBytes();
-	//shiftRows();
-	//mixColumns();
-	/*addRoundKey();
-	printOutput();*/
-	std::cin.get();
+	int n, m;
+	unsigned char plainText[16];
+	unsigned char keys[16];
+
+	std::cin >> n;
+	for (int j = 0; j < n; j++)
+	{
+		std::string x, k;
+		std::cin >> x;
+		std::cin >> k;
+		std::cin >> m;
+		for (int i = 0; i < 16; i++)
+		{
+			std::string tempp = x.substr((2 * i), 2);
+			sscanf(tempp.c_str(), "%x", &plainText[i]);
+		}
+		for (int i = 0; i < 15; i++)
+		{
+			states[i] = plainText[(4 * i) % 15];
+		}
+		states[15] = plainText[15];
+
+		for (int i = 0; i<16; i++)
+		{
+			std::string temp = k.substr((2 * i), 2);
+			sscanf(temp.c_str(), "%x", &keys[i]);
+		}
+
+		for (int i = 0; i < 15; i++)
+		{
+			key[i] = keys[(4 * i) % 15];
+		}
+		key[15] = keys[15];
+
+		for (int k = 0; k < m; k++)
+		{
+			keyExpansion();
+			addRoundKey();
+			for (int i = 0; i<9; i++)
+			{
+				substituteBytes();
+				shiftRows();
+				mixColumns();
+				addRoundKey();
+			}
+			substituteBytes();
+			shiftRows();
+			addRoundKey();
+			roundd = 0;
+		}
+
+
+		for (int i = 0; i<4; i++)
+		{
+			std::cout << std::setfill('0') << std::setw(2) << std::hex << (int)states[i];
+			std::cout << std::setfill('0') << std::setw(2) << std::hex << (int)states[i+4];
+			std::cout << std::setfill('0') << std::setw(2) << std::hex << (int)states[i+8];
+			std::cout << std::setfill('0') << std::setw(2) << std::hex << (int)states[i+12];
+
+		}
+		std::cout<<std::endl;
+	}
+
+
 	return 0;
 }
